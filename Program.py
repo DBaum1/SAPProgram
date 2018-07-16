@@ -89,7 +89,7 @@ def fillGrid(parent):
 #Shows table where user inputs what information is in each column
 #Filled in by default. Blank spaces are skipped
 def showColTable():
-    table = Tk()
+    table = Toplevel()
     table.title("Set Column Info")
     table.geometry(DEFAULT_SIZE)
     col_table_label = Label(table, wraplength = 500, text="Enter the column"
@@ -103,7 +103,6 @@ def showColTable():
     fillGrid(table)
     table.protocol("WM_DELETE_WINDOW", lambda:(write_to_config(table),
                                                table.destroy()))
-    table.mainloop()
     
 #Read spreadsheet sheet
 def readSheet(sheet):

@@ -3,7 +3,6 @@
 from tkinter import *
 from tkinter.filedialog import askopenfilename
 from tkinter import messagebox
-import pyautogui
 import openpyxl
 import os
 from configparser import ConfigParser, NoSectionError, DuplicateSectionError
@@ -21,74 +20,72 @@ COL_NUM = 2 #column for grid layout
 #Listings to check SAP for
 LISTINGS = ["Contract Number", "Contract Name", "Vendor name", "OA Amount",
             "OA Net", "OA Remaining", "Validity Start Date", "Expiration Date"]
+ENTRY_LIST = [] #Store references to grid entries
 DEFAULT_COLS = ["A", "B", "C", "F", "G", "", "J", "K"]
-# Pyautogui settings
-pyautogui.PAUSE = 1
-pyautogui.FAILSAFE = True
 
+#Write user entered data to config file
+def write_to_config(parent):    
+    config = ConfigParser()
+    try:
+        config.read('config.ini')
+        with open('config.ini', 'w') as f:
+            for i in range(len(ENTRY_LIST)):
+                val = ENTRY_LIST[i].get()
+                try:
+                    config.set('main', LISTINGS[i], val)
+                except (NoSectionError, DuplicateSectionError):
+                    init_config()
+                    return None
+            config.write(f)
+            f.close()
+    except IOError:
+        init_config()
+    
+#Reads from config
+def read_from_config(parent):
+    config = ConfigParser()
+    config.read('config.ini')
+    #loop through entry fields
+    for i in range(len(ENTRY_LIST)):
+        curr_entry = ENTRY_LIST[i]
+        try:
+            val = config.get('main', LISTINGS[i])
+            curr_entry.insert(0, val)
+        #Config corrupted, remake
+        except (NoSectionError, DuplicateSectionError):
+            init_config()
+        except NoOptionError:
+            pass
+        
 #Creates config file
 def init_config():
     config = ConfigParser()
     config.write('config.ini')
     config.add_section('main')
     with open('config.ini', 'w') as f:
-        for i in range(0, len(LISTINGS)):
+        for i in range(len(LISTINGS)):
             config.set('main', LISTINGS[i], DEFAULT_COLS[i])
         config.write(f)
         f.close()
-
-#Reads from config
-def config_to_entry(parent):
-    config = ConfigParser()
-    config.read('config.ini')
-    #loop through children to get the entry fields, use label to link with
-    #correct entry field
-    for r in range(1, len(LISTINGS)):
-        for child in parent.grid_slaves(row=r, column=COL_NUM):
-            label = child.cget("text")
-            #insert into entry field
-            curr_entry = parent.grid_slaves(row=r, column=COL_NUM+1)
-            val = config.get('main', LISTINGS[index])
-            entry.insert(0, val)
-                
-    
-#Write user entered data to config file
-def on_closing(parent):
-    config = ConfigParser()
-    config.write('config.ini')
-    config.add_section('main')
-    # save to config file
-    with open('config.ini', 'w') as f:
-        config.write(f)
-    #Loop through columns
-    #Write column entry field values to config file
-    #config.set('main', LISTINGS[i], 'world')
-    #for child in parent.children.values():
-    #    info = child.grid_info()
-    #     print(info)
-##            if info['row'] == str(i+1) and info['column'] == str(COL_NUM):
-##                config.set('main', LISTINGS[i], child.get())
-    print("on closing triggered")
-
+        
 #Fills entries with values from config file
 def fillGrid(parent):
-    for i in range(0, len(LISTINGS)):
+    for i in range(len(LISTINGS)):
         curr_label = Label(parent, text=LISTINGS[i])
         curr_label.grid(row=i+1, column=COL_NUM, padx=5,pady=5)
         #initialize entry fields
         curr_entry = Entry(parent)
+        ENTRY_LIST.append(curr_entry)
         curr_entry.grid(row=i+1, column=COL_NUM + 1, padx=5,pady=5)
     #config file exists 
     try:
         f = open('config.ini', 'r')
-        #if no main section, start from scratch
-        if f.readline() != '[main]':
     #create config from scratch
     except IOError:
         init_config()
     #load in values from config file
-    config_to_entry(parent)
-
+    read_from_config(parent)
+    
 #Shows table where user inputs what information is in each column
 #Filled in by default. Blank spaces are skipped
 def showColTable():
@@ -104,7 +101,7 @@ def showColTable():
     table.minsize(width=MIN_WIDTH, height = MIN_HEIGHT)
     table.maxsize(width=MAX_WIDTH, height = MAX_HEIGHT)
     fillGrid(table)
-    table.protocol("WM_DELETE_WINDOW", lambda:(on_closing(table),
+    table.protocol("WM_DELETE_WINDOW", lambda:(write_to_config(table),
                                                table.destroy()))
     table.mainloop()
     
@@ -138,7 +135,7 @@ def excelDebug():
                                 + " spacing, and capitalization."
                                 + " It must exactly match the Excel doc"
                                 + " sheet name.")
-
+           
 #Automate control of mouse
 def importData():
     #coords = pyautogui.locateOnScreen('C:/Users/it4892/Desktop/Capture.png')
@@ -159,7 +156,7 @@ def showFileChooser(arg=None):
     if(filename):
         file_path = filename
         import_btn.configure(state=NORMAL)
-
+        
 #GUI
 root = Tk()
 root.title("SAP to Excel")
@@ -194,7 +191,7 @@ sheet_entry = Entry()
 sheet_entry.pack(pady=10)
 
 #Column Info
-col_info_btn = Button(root, text="Enter/Verifiy Column Information",
+col_info_btn = Button(root, text="Enter/Verify Column Information",
                       command=showColTable)
 col_info_btn.pack(pady=10)
 
@@ -203,11 +200,4 @@ import_btn = Button(root, text="Import from SAP", state=DISABLED,
                     command=importData)
 import_btn.pack()
 
-"""
-try:
-    while(True):
-        print("test")
-except KeyboardInterrupt:
-    print("W: interrupt received, suspending process…")
-"""
 root.mainloop()

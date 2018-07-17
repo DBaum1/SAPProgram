@@ -23,7 +23,7 @@ COL_NUM = 2 #column for grid layout
 #Listings to check SAP for
 LISTINGS = ["Contract Number", "Contract Name", "Vendor name", "OA Amount",
             "OA Net", "OA Remaining", "Validity Start Date", "Expiration Date"]
-ENTRY_LIST = [] #Store references to grid entries
+ENTRY_LIST = [None] * len(LISTINGS) #Store references to grid entries
 DEFAULT_COLS = ["A", "B", "C", "F", "G", "", "J", "K"]
 PATH = 'C:\Program Files (x86)\SAP\FrontEnd\SAPgui\saplogon.exe'
 
@@ -86,13 +86,13 @@ def init_config():
         f.close()
         
 #Fills entries with values from config file
-def fillGrid(parent):
+def fill_grid(parent):
     for i in range(len(LISTINGS)):
         curr_label = Label(parent, text=LISTINGS[i])
         curr_label.grid(row=i+1, column=COL_NUM, padx=5,pady=5)
         #initialize entry fields
         curr_entry = Entry(parent)
-        ENTRY_LIST.append(curr_entry)
+        ENTRY_LIST[i] = curr_entry
         curr_entry.grid(row=i+1, column=COL_NUM + 1, padx=5,pady=5)
     #config file exists 
     try:
@@ -105,7 +105,7 @@ def fillGrid(parent):
     
 #Shows table where user inputs what information is in each column
 #Filled in by default. Blank spaces are skipped
-def showColTable():
+def show_col_table():
     table = Toplevel()
     table.title("Set Column Info")
     table.geometry(DEFAULT_SIZE)
@@ -117,7 +117,7 @@ def showColTable():
     col_table_label.grid(columnspan = 8)
     table.minsize(width=MIN_WIDTH, height = MIN_HEIGHT)
     table.maxsize(width=MAX_WIDTH, height = MAX_HEIGHT)
-    fillGrid(table)
+    fill_grid(table)
     table.protocol("WM_DELETE_WINDOW", lambda:(write_to_config(table),
                                                table.destroy()))
     
@@ -157,7 +157,7 @@ def import_data():
     print("importData clicked")
 
 #Excel file selection dialog
-def showFileChooser(arg=None):
+def show_file_chooser(arg=None):
     filename = askopenfilename(parent=None, title = "Select file",
                                filetypes = [(("Excel (.xlsx)","*.xlsx"))])
     length = len(filename)
@@ -192,7 +192,7 @@ path_label.pack(pady=10)
 
 #File Chooser Button
 file_button = Button(root, text="Select destination file",
-                     command=showFileChooser)
+                     command=show_file_chooser)
 file_button.pack(pady=10)
 
 #Sheet
@@ -204,7 +204,7 @@ sheet_entry.pack(pady=10)
 
 #Column Info
 col_info_btn = Button(root, text="Enter/Verify Column Information",
-                      command=showColTable)
+                      command=show_col_table)
 col_info_btn.pack(pady=10)
 
 #Import Button, initially disabled

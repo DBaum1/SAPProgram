@@ -13,11 +13,11 @@ from shutil import copyfile
 #constants
 COLOR = '#2c3766'
 TEXT_COLOR = '#ffffff'
-DEFAULT_SIZE = '530x330'
+DEFAULT_SIZE = '530x380'
 MIN_WIDTH = 500
-MIN_HEIGHT = 320
+MIN_HEIGHT = 365
 MAX_WIDTH = 570
-MAX_HEIGHT = 350
+MAX_HEIGHT = 390
 LABEL_WIDTH = 55
 COL_NUM = 2 #column for grid layout
 #Listings to check SAP for
@@ -34,7 +34,7 @@ def save_backup():
     root = components[0]
     ext = components[1]
     time_tuple = time.localtime()
-    format_time = time.strftime('_%m_%d_%Y_%Hh_%Mm', time_tuple)
+    format_time = time.strftime('_%m_%d_%Y_%Hh_%Mm_%Ss', time_tuple)
     root_format = root + format_time
     dest = root_format + ext
     copyfile(src, dest)
@@ -122,7 +122,7 @@ def show_col_table():
                                                table.destroy()))
     
 #Read spreadsheet sheet
-def readSheet(sheet):
+def read_sheet(sheet):
     num_rows = sheet.max_row
     num_cols = sheet.max_column
     print(num_rows)
@@ -141,7 +141,7 @@ def import_data():
         sheets = wb.sheetnames
         sheet = wb[sheetname]
         save_backup()
-        #read_sheet(sheet)
+        read_sheet(sheet)
     #File no longer exists at path
     except IOError:
             messagebox.showerror("File not found!", "File not found"
@@ -177,14 +177,27 @@ root.configure(background=COLOR)
 root.minsize(width=MIN_WIDTH, height = MIN_HEIGHT)
 root.maxsize(width=MAX_WIDTH, height = MAX_HEIGHT)
 
-label = Label(root, wraplength=300, text="Program to transfer data "
+label1 = Label(root, wraplength=500, text="Program to transfer data "
           + "from SAP database to Excel spreaadsheet. Please log into SAP "
-          + "and navigate to agreement number page before using.\n"
-          + "\nHit CTRL+C to terminate program (will necessitate restarting"
-              + " to continue)")
-label.configure(background=COLOR)
-label.configure(foreground=TEXT_COLOR)
-label.pack()
+          + "and navigate to agreement number page before using.\n")
+label1.configure(background=COLOR)
+label1.configure(foreground=TEXT_COLOR)
+label1.pack()
+
+label2 = Label(root, wraplength=500, text=" NOTE: This program creates a"
+               + " timestamped backup of any file it modifies. It is"
+               + " HIGHLY recommended not to delete it until you have"
+               + " verified all the new information is valid.\n")
+label2.configure(background=COLOR)
+label2.configure(foreground='red')
+label2.pack()
+
+label3 = Label(root, wraplength=500, text=" WARNING: Terminating the program"
+               + " early via CTRL+C or clicking while the program is running"
+               + " will cause problems that necessitate restarting.")
+label3.configure(background=COLOR)
+label3.configure(foreground=TEXT_COLOR)
+label3.pack()
 
 #Label to show user the destination path they chose
 path_label = Label(root, text="",  width=LABEL_WIDTH)

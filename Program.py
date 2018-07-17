@@ -7,6 +7,9 @@ import openpyxl
 import os
 from configparser import ConfigParser, NoSectionError, DuplicateSectionError
 from configparser import NoOptionError
+import time
+from shutil import copyfile
+
 #constants
 COLOR = '#2c3766'
 TEXT_COLOR = '#ffffff'
@@ -22,6 +25,19 @@ LISTINGS = ["Contract Number", "Contract Name", "Vendor name", "OA Amount",
             "OA Net", "OA Remaining", "Validity Start Date", "Expiration Date"]
 ENTRY_LIST = [] #Store references to grid entries
 DEFAULT_COLS = ["A", "B", "C", "F", "G", "", "J", "K"]
+PATH = 'C:\Program Files (x86)\SAP\FrontEnd\SAPgui\saplogon.exe'
+
+#copies original file, timestamps backup
+def save_backup():
+    src = path_label.cget("text")
+    components = os.path.splitext(src)
+    root = components[0]
+    ext = components[1]
+    time_tuple = time.localtime()
+    format_time = time.strftime('_%m_%d_%Y_%Hh_%Mm', time_tuple)
+    root_format = root + format_time
+    dest = root_format + ext
+    copyfile(src, dest)
 
 #Write user entered data to config file
 def write_to_config(parent):    
@@ -62,6 +78,7 @@ def init_config():
     config = ConfigParser()
     config.write('config.ini')
     config.add_section('main')
+    config.set('main', 'path', PATH)
     with open('config.ini', 'w') as f:
         for i in range(len(LISTINGS)):
             config.set('main', LISTINGS[i], DEFAULT_COLS[i])
@@ -113,34 +130,30 @@ def readSheet(sheet):
     for r in range(1, num_rows, 1):
         for c in range(1, num_cols, 1):
             print(sheet.cell(row=r, column=c).value)
-            
-#debugging - make sure Excel file contents is being read properly
-#printing it to console
-def excelDebug():
+           
+#Automate control of mouse
+def import_data():
     file_path = path_label.cget("text")
-    if(file_path is not None):
-        print(file_path)
+    try:
         wb = openpyxl.load_workbook(file_path)
         #get sheet user entered
         sheetname = sheet_entry.get()
         sheets = wb.sheetnames
-        try:
-            sheet = wb[sheetname]
-            #readSheet(sheet)
-        #Sheet doesn't exist
-        except KeyError:
+        sheet = wb[sheetname]
+        save_backup()
+        #read_sheet(sheet)
+    #File no longer exists at path
+    except IOError:
+            messagebox.showerror("File not found!", "File not found"
+                                 + " at selected path. Check to make"
+                                 + " sure it wasn't deleted or moved.")
+    #Sheet not present
+    except KeyError:
            messagebox.showerror("Sheet not found!", "Check sheet entry"
                                 + " field for spelling,"
                                 + " spacing, and capitalization."
                                 + " It must exactly match the Excel doc"
                                 + " sheet name.")
-           
-#Automate control of mouse
-def importData():
-    #coords = pyautogui.locateOnScreen('C:/Users/it4892/Desktop/Capture.png')
-    #if(coords is None):
-    #    print("not found")
-    excelDebug()
     print("importData clicked")
 
 #Excel file selection dialog
@@ -196,7 +209,7 @@ col_info_btn.pack(pady=10)
 
 #Import Button, initially disabled
 import_btn = Button(root, text="Import from SAP", state=DISABLED,
-                    command=importData)
+                    command=import_data)
 import_btn.pack()
 
 root.mainloop()

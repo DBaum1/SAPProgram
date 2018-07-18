@@ -24,6 +24,7 @@ COL_NUM = 2 #column for grid layout
 LISTINGS = ["Contract Number", "Contract Name", "Vendor name", "OA Amount",
             "OA Net", "OA Remaining", "Validity Start Date", "Expiration Date"]
 ENTRY_LIST = [None] * len(LISTINGS) #Store references to grid entries
+ENTRY_VALS = [None] * len(LISTINGS) #Store values of grid entries
 DEFAULT_COLS = ["A", "B", "C", "F", "G", "", "J", "K"]
 PATH = 'C:\Program Files (x86)\SAP\FrontEnd\SAPgui\saplogon.exe'
 
@@ -47,6 +48,7 @@ def write_to_config(parent):
         with open('config.ini', 'w') as f:
             for i in range(len(ENTRY_LIST)):
                 val = ENTRY_LIST[i].get()
+                ENTRY_VALS[i] = val
                 try:
                     config.set('main', LISTINGS[i], val)
                 except (NoSectionError, DuplicateSectionError):
@@ -56,6 +58,8 @@ def write_to_config(parent):
             f.close()
     except IOError:
         init_config()
+    col_info_btn.configure(state=NORMAL)
+
     
 #Reads from config
 def read_from_config(parent):
@@ -67,6 +71,7 @@ def read_from_config(parent):
         try:
             val = config.get('main', LISTINGS[i])
             curr_entry.insert(0, val)
+            ENTRY_VALS[i] = val
         #Config corrupted, remake
         except (NoSectionError, DuplicateSectionError):
             init_config()
@@ -106,6 +111,7 @@ def fill_grid(parent):
 #Shows table where user inputs what information is in each column
 #Filled in by default. Blank spaces are skipped
 def show_col_table():
+    col_info_btn.configure(state=DISABLED)
     table = Toplevel()
     table.title("Set Column Info")
     table.geometry(DEFAULT_SIZE)
@@ -141,7 +147,7 @@ def import_data():
         sheets = wb.sheetnames
         sheet = wb[sheetname]
         save_backup()
-        read_sheet(sheet)
+        #read_sheet(sheet)
     #File no longer exists at path
     except IOError:
             messagebox.showerror("File not found!", "File not found"
@@ -154,8 +160,11 @@ def import_data():
                                 + " spacing, and capitalization."
                                 + " It must exactly match the Excel doc"
                                 + " sheet name.")
+    #User ends program early
+    except KeyboardInterrupt:
+        root.destroy()
     print("importData clicked")
-
+        
 #Excel file selection dialog
 def show_file_chooser(arg=None):
     filename = askopenfilename(parent=None, title = "Select file",

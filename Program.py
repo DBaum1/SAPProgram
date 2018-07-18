@@ -28,6 +28,40 @@ ENTRY_VALS = [None] * len(LISTINGS) #Store values of grid entries
 DEFAULT_COLS = ["A", "B", "C", "F", "G", "", "J", "K"]
 PATH = 'C:\Program Files (x86)\SAP\FrontEnd\SAPgui\saplogon.exe'
 
+#transfers data from SAP fields to excel file
+def sap_transfer():
+    ############################
+    #testing functionality
+    app = Application(backend="win32").start(PATH)
+    print("started app")
+    # describe the window inside saplogon.exe process
+    dlg_spec = app.SAP_Logon
+    print("described window")
+    actionable_dlg = dlg_spec.wait('visible')
+    print("logon visible")
+    field = dlg_spec['Edit0']
+    field.type_keys('hello')
+    print("keys typed")
+    dlg_spec['Variable Logon...'].click()
+    var_window = app.Logon_To_System
+    var_window['Cancel'].close_click()
+    print("cancel clicked")
+    field.type_keys('again')
+    """
+        #app = Application(backend="uia").connect(path=PATH)
+        Properties = Desktop(backend='win32').SAP_Logon
+        #Type hello into entry field
+        field = Properties['Edit0']
+        field.type_keys('hello')
+        #Click variable logon
+        Properties['Button2'].click()
+        Properties2 = Desktop(backend='win32').Logon_to_System
+        #Exit variable logon
+        Properties2['Cancel'].close_click()
+        #get text from field
+    """
+    #############################
+    
 #copies original file, timestamps backup
 def save_backup():
     src = path_label.cget("text")

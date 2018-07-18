@@ -47,6 +47,9 @@ def sap_transfer():
     var_window['Cancel'].close_click()
     print("cancel clicked")
     field.type_keys('again')
+    #get text from field and store in variable
+    text = field.text_block()
+    print(text)
     """
         #app = Application(backend="uia").connect(path=PATH)
         Properties = Desktop(backend='win32').SAP_Logon

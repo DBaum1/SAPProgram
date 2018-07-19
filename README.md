@@ -1,2 +1,2 @@
 # SAPProgram
-Transfer data from SAP to Excel spreadsheet
+Uses GUI automation to transfer data from SAP Contract Agreement page to Excel spreadsheet

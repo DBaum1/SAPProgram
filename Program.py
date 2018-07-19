@@ -9,6 +9,7 @@ from configparser import ConfigParser, NoSectionError, DuplicateSectionError
 from configparser import NoOptionError
 import time
 from shutil import copyfile
+from pywinauto.application import Application
 
 #constants
 COLOR = '#2c3766'
@@ -27,7 +28,43 @@ ENTRY_LIST = [None] * len(LISTINGS) #Store references to grid entries
 ENTRY_VALS = [None] * len(LISTINGS) #Store values of grid entries
 DEFAULT_COLS = ["A", "B", "C", "F", "G", "", "J", "K"]
 PATH = 'C:\Program Files (x86)\SAP\FrontEnd\SAPgui\saplogon.exe'
+undo_stack = []
 
+#Recover original file for unexpected termination
+def save(src):
+    undo_stack.append(BackupFileCommand(src))
+    #modify data to test
+    config = ConfigParser()
+    config.read('config.ini')
+    with open('config.ini', 'w') as f:
+        config.set('main', LISTINGS[0], 'Q')
+        config.set('main', LISTINGS[1], 'W')
+        config.set('main', LISTINGS[2], 'E')
+        config.write(f)
+        f.close()
+
+def undo_save():
+    undo_stack.pop().undo()
+
+class BackupFileCommand(object):
+    dest = ''
+    #copies original file, timestamps backup
+    def __init__(self, src):
+        components = os.path.splitext(src)
+        root = components[0]
+        ext = components[1]
+        time_tuple = time.localtime()
+        format_time = time.strftime('_%m_%d_%Y_%Hh_%Mm_%Ss', time_tuple)
+        root_format = root + format_time
+        self.dest = root_format + ext
+        print(self.dest)
+        copyfile(src, self.dest)
+        
+    def undo(self):
+        print(self.dest)
+        copyfile(self.dest, src)
+        os.remove(self.dest)
+        
 #transfers data from SAP fields to excel file
 def sap_transfer():
     ############################

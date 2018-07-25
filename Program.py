@@ -4,107 +4,35 @@ from tkinter import *
 from tkinter.filedialog import askopenfilename
 from tkinter import messagebox
 import openpyxl
+from openpyxl.utils import cell
 import os
-from configparser import ConfigParser, NoSectionError, DuplicateSectionError
-from configparser import NoOptionError
 import time
-from shutil import copyfile
+import pywinauto
+import re
 from pywinauto.application import Application
+from pywinauto import keyboard
+from shutil import copyfile
+from configparser import ConfigParser, NoSectionError, DuplicateSectionError,\
+                     NoOptionError, MissingSectionHeaderError
 
 #constants
-COLOR = '#2c3766'
-TEXT_COLOR = '#ffffff'
-DEFAULT_SIZE = '530x380'
-MIN_WIDTH = 500
-MIN_HEIGHT = 365
+COLOR = '#063256'
+FONT = 11
+DEFAULT_SIZE = '560x450'
+MIN_WIDTH = 550
+MIN_HEIGHT = 440
 MAX_WIDTH = 570
-MAX_HEIGHT = 390
-LABEL_WIDTH = 55
-COL_NUM = 2 #column for grid layout
-#Listings to check SAP for
-LISTINGS = ["Contract Number", "Contract Name", "Vendor name", "OA Amount",
-            "OA Net", "OA Remaining", "Validity Start Date", "Expiration Date"]
-ENTRY_LIST = [None] * len(LISTINGS) #Store references to grid entries
-ENTRY_VALS = [None] * len(LISTINGS) #Store values of grid entries
-DEFAULT_COLS = ["A", "B", "C", "F", "G", "", "J", "K"]
+MAX_HEIGHT = 460
 PATH = 'C:\Program Files (x86)\SAP\FrontEnd\SAPgui\saplogon.exe'
-undo_stack = []
-
-#Recover original file for unexpected termination
-def save(src):
-    undo_stack.append(BackupFileCommand(src))
-    #modify data to test
-    config = ConfigParser()
-    config.read('config.ini')
-    with open('config.ini', 'w') as f:
-        config.set('main', LISTINGS[0], 'Q')
-        config.set('main', LISTINGS[1], 'W')
-        config.set('main', LISTINGS[2], 'E')
-        config.write(f)
-        f.close()
-
-def undo_save():
-    undo_stack.pop().undo()
-
-class BackupFileCommand(object):
-    dest = ''
-    #copies original file, timestamps backup
-    def __init__(self, src):
-        components = os.path.splitext(src)
-        root = components[0]
-        ext = components[1]
-        time_tuple = time.localtime()
-        format_time = time.strftime('_%m_%d_%Y_%Hh_%Mm_%Ss', time_tuple)
-        root_format = root + format_time
-        self.dest = root_format + ext
-        print(self.dest)
-        copyfile(src, self.dest)
-        
-    def undo(self):
-        print(self.dest)
-        copyfile(self.dest, src)
-        os.remove(self.dest)
-        
-#transfers data from SAP fields to excel file
-def sap_transfer():
-    ############################
-    #testing functionality
-    app = Application(backend="win32").start(PATH)
-    print("started app")
-    # describe the window inside saplogon.exe process
-    dlg_spec = app.SAP_Logon
-    print("described window")
-    actionable_dlg = dlg_spec.wait('visible')
-    print("logon visible")
-    field = dlg_spec['Edit0']
-    field.type_keys('hello')
-    print("keys typed")
-    dlg_spec['Variable Logon...'].click()
-    var_window = app.Logon_To_System
-    var_window['Cancel'].close_click()
-    print("cancel clicked")
-    field.type_keys('again')
-    #get text from field and store in variable
-    text = field.text_block()
-    print(text)
-    """
-        #app = Application(backend="uia").connect(path=PATH)
-        Properties = Desktop(backend='win32').SAP_Logon
-        #Type hello into entry field
-        field = Properties['Edit0']
-        field.type_keys('hello')
-        #Click variable logon
-        Properties['Button2'].click()
-        Properties2 = Desktop(backend='win32').Logon_to_System
-        #Exit variable logon
-        Properties2['Cancel'].close_click()
-        #get text from field
-    """
-    #############################
+#Listings to check SAP for
+LISTINGS = [('Contract Number','A'), ('Contract Name','B'),('Vendor name','C'),
+        ('OA Amount', 'F'), ('OA Net', 'G'), ('OA Remaining', ''),
+        ('Validity Start Date', 'J'), ('Expiration Date', 'K')]
+ENTRY_LIST = [None] * len(LISTINGS) #Store references to grid entries
     
-#copies original file, timestamps backup
-def save_backup():
-    src = path_label.cget("text")
+#copies original file, timestamps backup. Returns path of backup
+def save_backup(file_path):
+    src = file_path
     components = os.path.splitext(src)
     root = components[0]
     ext = components[1]
@@ -113,45 +41,8 @@ def save_backup():
     root_format = root + format_time
     dest = root_format + ext
     copyfile(src, dest)
-
-#Write user entered data to config file
-def write_to_config(parent):    
-    config = ConfigParser()
-    try:
-        config.read('config.ini')
-        with open('config.ini', 'w') as f:
-            for i in range(len(ENTRY_LIST)):
-                val = ENTRY_LIST[i].get()
-                ENTRY_VALS[i] = val
-                try:
-                    config.set('main', LISTINGS[i], val)
-                except (NoSectionError, DuplicateSectionError):
-                    init_config()
-                    return None
-            config.write(f)
-            f.close()
-    except IOError:
-        init_config()
-    col_info_btn.configure(state=NORMAL)
-
+    return dest
     
-#Reads from config
-def read_from_config(parent):
-    config = ConfigParser()
-    config.read('config.ini')
-    #loop through entry fields
-    for i in range(len(ENTRY_LIST)):
-        curr_entry = ENTRY_LIST[i]
-        try:
-            val = config.get('main', LISTINGS[i])
-            curr_entry.insert(0, val)
-            ENTRY_VALS[i] = val
-        #Config corrupted, remake
-        except (NoSectionError, DuplicateSectionError):
-            init_config()
-        except NoOptionError:
-            pass
-        
 #Creates config file
 def init_config():
     config = ConfigParser()
@@ -160,152 +51,296 @@ def init_config():
     config.set('main', 'path', PATH)
     with open('config.ini', 'w') as f:
         for i in range(len(LISTINGS)):
-            config.set('main', LISTINGS[i], DEFAULT_COLS[i])
+            curr_tuple = LISTINGS[i]
+            config.set('main', curr_tuple[0], curr_tuple[1])
         config.write(f)
         f.close()
-        
-#Fills entries with values from config file
-def fill_grid(parent):
-    for i in range(len(LISTINGS)):
-        curr_label = Label(parent, text=LISTINGS[i])
-        curr_label.grid(row=i+1, column=COL_NUM, padx=5,pady=5)
-        #initialize entry fields
-        curr_entry = Entry(parent)
-        ENTRY_LIST[i] = curr_entry
-        curr_entry.grid(row=i+1, column=COL_NUM + 1, padx=5,pady=5)
-    #config file exists 
+
+#Reads from config
+def read_from_config():
+    config = ConfigParser()
     try:
-        f = open('config.ini', 'r')
-    #create config from scratch
+        config.read('config.ini')
+        #loop through entry fields
+        for i in range(len(ENTRY_LIST)):
+            curr_tuple = LISTINGS[i]
+            curr_entry = ENTRY_LIST[i]
+            try:
+                val = config.get('main', curr_tuple[0])
+                curr_entry.insert(0, val)
+                #Update LISTINGS, convert alphanumeric column to int
+                val = cell.column_index_from_string(val)
+                new_tuple = (curr_tuple[0], val)                     
+                LISTINGS[i] = new_tuple
+            #Config corrupted, remake
+            except (NoSectionError, DuplicateSectionError,
+                    MissingSectionHeaderError):
+                init_config()
+                read_from_config()
+            except NoOptionError:
+                continue
+            except ValueError:
+                    new_tuple = (curr_tuple[0], '-1')
+                    LISTINGS[i] = new_tuple
+                    continue
+    #Config corrupted, remake
+    except (MissingSectionHeaderError):
+        init_config()
+        read_from_config()
+
+#Write user entered data to config file
+def write_to_config(btn):    
+    config = ConfigParser()
+    try:
+        config.read('config.ini')
+        with open('config.ini', 'w') as f:
+            for i in range(len(ENTRY_LIST)):
+                curr_tuple = LISTINGS[i]
+                val = ENTRY_LIST[i].get()
+                try:
+                    config.set('main', curr_tuple[0], val)
+                    #Update LISTINGS, convert alphanumeric column to int
+                    val = cell.column_index_from_string(val)
+                    new_tuple = (curr_tuple[0], val)                  
+                    LISTINGS[i] = new_tuple
+                except (NoSectionError, DuplicateSectionError,
+                        MissingSectionHeaderError):
+                    init_config()
+                    read_from_config()
+                except ValueError:
+                    new_tuple = (curr_tuple[0], '-1')
+                    LISTINGS[i] = new_tuple
+                    continue
+            config.write(f)
+            f.close()
     except IOError:
         init_config()
-    #load in values from config file
-    read_from_config(parent)
+        write_to_config()
+    btn.configure(state=NORMAL)
     
-#Shows table where user inputs what information is in each column
-#Filled in by default. Blank spaces are skipped
-def show_col_table():
-    col_info_btn.configure(state=DISABLED)
-    table = Toplevel()
-    table.title("Set Column Info")
-    table.geometry(DEFAULT_SIZE)
-    col_table_label = Label(table, wraplength = 500, text="Enter the column"
-                            +" letter that the relevant information "
-                            + " can be found in (ex: A, B, AA etc.)"
-                            + " If a column's value is calculated with"
-                            + " a function, leave that field blank")
-    col_table_label.grid(columnspan = 8)
-    table.minsize(width=MIN_WIDTH, height = MIN_HEIGHT)
-    table.maxsize(width=MAX_WIDTH, height = MAX_HEIGHT)
-    fill_grid(table)
-    table.protocol("WM_DELETE_WINDOW", lambda:(write_to_config(table),
+class SAPTransferGUI:
+
+    def __init__(self, master, exit_stat):
+        self.master = master
+        self.exit_stat = exit_stat
+        self.initialize()
+        
+    #Initializes main GUI components
+    def initialize(self):
+        #Labels
+        label1_text = ("Program to transfer data from SAP database to Excel"
+        " spreadsheet. Please log into SAP and navigate to the agreement"
+        " number page before using.\n")
+        label1 = Label(text=label1_text, wraplength=500, font=(None, FONT),
+                      foreground='white', background=COLOR).pack(fill=X)
+        label2_text = (" NOTE: This program creates a timestamped backup of"
+                " any file it modifies. It is HIGHLY recommended NOT to"
+                " delete the backup until you have verified all the new"
+               " information is valid.\n")
+        label2 = Label(text=label2_text, wraplength=500, font=(None, FONT),
+                    foreground='red', background='white').pack(fill=X)
+        label3_text = ("WARNING: Terminating the program before it has"
+               " finished the data transfer will cause all changes to be"
+               " rolled back, necessitating restarting to continue.")
+        label3 = Label(text=label3_text, wraplength=500, font=(None, FONT),
+                foreground='white', background=COLOR).pack(fill=X)
+        
+        #File Chooser Button
+        file_button = Button(text='Select Excel file',font=(None, FONT),
+                command=lambda: self.show_file_chooser(path_entry, import_btn))
+        file_button.pack(pady=10)
+
+        #Entry to show user the destination path they chose
+        dest = StringVar()
+        path_entry = Entry(textvariable=dest, width=50, justify=LEFT,
+                      state='readonly',font=(None, FONT))
+        path_entry.pack(pady=5)
+
+        #Sheet
+        sheet_label = Label(text="Enter Excel sheet name ex: Services "
+                            + "(case sensitive)", font=(None, FONT))
+        sheet_label.pack(pady=5)
+        dest = StringVar()
+        dest.set('Services')
+        sheet_entry = Entry(font=(None, FONT), textvariable=dest)
+        sheet_entry.pack(pady=10)
+
+        #Column Info
+        col_info_btn = Button(root, text="Enter/Verify Column Information",
+            font=(None, FONT), command=lambda:
+            (col_info_btn.config(state=DISABLED), ColTable(self, col_info_btn)))
+        col_info_btn.pack(pady=10)
+
+        #Import Button, initially disabled
+        import_btn = Button(root, text="Import from SAP", state=DISABLED,
+          command=lambda:(import_btn.config(state=DISABLED),
+          self.import_data(path_entry, sheet_entry, import_btn)),
+                            font=(None, FONT))
+        import_btn.pack()                                               
+
+    #Excel file selection dialog
+    def show_file_chooser(self, path_entry, btn):
+        path_entry.configure(state='normal')
+        file_path = askopenfilename(parent=None, title = "Select file",
+                        filetypes = [(("Excel (.xlsx)","*.xlsx"))])
+        #show user the filepath they selected
+        if file_path is not None and len(file_path) > 0:
+            path_entry.delete(0, END)
+            path_entry.insert(0, file_path)
+            path_entry.configure(state='readonly')
+            btn.config(state=NORMAL)
+
+    #Imports data from SAP to Excel doc
+    def import_data(self, path_entry, sheet_entry, btn):
+        file_path = path_entry.get()
+        try:
+            wb = openpyxl.load_workbook(file_path)
+            #get sheet user entered
+            sheetname = sheet_entry.get()
+            sheets = wb.sheetnames
+            sheet = wb[sheetname]
+            #backup_path = save_backup(file_path)
+            #self.sap_transfer(backup_path, file_path)
+            #If premature exit, restore unmodified file
+            #self.master.protocol("WM_DELETE_WINDOW", lambda:
+            #(self.restore_file(backup_path, file_path), self.master.destroy()))
+            try:
+                #app = Application(backend='win32').connect(path=PATH)
+                #Display Contract:Initial Screen
+                #disp_con_dlg = app.Display_Contract
+                #Start transfer
+                self.sap_transfer(wb, sheet)
+            except pywinauto.application.ProcessNotFoundError:
+                text = ("Please make sure that SAP is running and you have"
+                        " navigated to the contract agreement page. If the"
+                        " contract agreement page is open but you are still"
+                        " getting this error, you will have to change the PATH"
+                        " variable in the config.ini file to the path of the "
+                        " SAPLogon.exe")
+                messagebox.showerror("Program not found!", text)
+        #File no longer exists at path
+        except IOError:
+            text = ("File not found at selected path. Check to make sure it"
+                    " wasn't deleted or moved.")
+            messagebox.showerror("File not found!", text)
+        except KeyError:
+            text = ("Check sheet entry field for spelling, spacing, and"
+            " capitalization. It must exactly match the Excel doc sheet name.")
+            messagebox.showerror("Sheet not found!", text)
+        btn.config(state=NORMAL)
+
+    #transfers data from SAP fields to excel file
+    def sap_transfer(self, workbook, sheet):
+        print("sap_transfer clicked - need to implement")
+        self.exit_stat = 1
+        max_row = sheet.max_row
+        max_col = sheet.max_column
+        start_row = self.get_start_row(sheet, max_row)
+        self.read_sheet(sheet, start_row, max_row, max_col)
+        
+        """
+            #disp_con_dlg = dlg_spec['Afx:60310000:1008']
+            #actionable_dlg = dlg_spec.wait('visible')
+            #curr_tuple = LISTINGS[0]
+            #contract_num_col = \
+            #openpyxl.utils.cell.column_index_from_string(curr_tuple[1])
+            #TODO get contract num from excel sheet, enter into SAP
+            #dummy_num = '4600014943'
+            #disp_con_dlg.TypeKeys(dummy_num)
+            #disp_con_dlg.TypeKeys('{ENTER}')
+            #actionable_dlg = disp_con_dlg.wait('visible')
+            #Display Contract:Item Overview 
+            #itm_over_dlg = app.Display_Contract_Item_Overview
+            #get header
+            #itm_over_dlg['Button4'].click()
+            #Display Contract:Header Data
+            #header_dlg = app.Display_Contract_Header_Data
+            #actionable_dlg = header_dlg.wait('visible')
+            #header_dlg['AfxWnd110'].draw_outline()
+        """
+        
+        #App done with transfer
+        self.exit_stat = 0
+            
+    #restores original file (dest) from backup (src) in case of premature exit
+    def restore_file(self, src, dest):
+        #exited before transfer was done
+        if(self.exit_stat == 1):
+            #Restore original file
+            copyfile(src, dest)
+            #Backup no longer needed
+            os.remove(src)
+
+    #Read spreadsheet sheet
+    def read_sheet(self, sheet, start_row, max_row, max_col):
+        for r in range(start_row, max_row):
+            for c in range(1, max_col):
+                print(sheet.cell(row=r, column=c).value, end='', flush=True)
+            print()
+
+    #get first row of contract data
+    def get_start_row(self, sheet, max_row):
+        #format of contract agreement numbers
+        num_format = re.compile('[0-9]{10}')
+        contract_col = cell.column_index_from_string(LISTINGS[0][1])
+        for r in range(1, max_row):
+            curr_cell = sheet.cell(row=r, column=contract_col)
+            val = str(curr_cell.value)
+            found = num_format.match(val)
+            #found first cell with contract number
+            if found:
+                return curr_cell.row
+            
+#Table where user inputs what information is in each column
+class ColTable:
+    def __init__(self, master, btn):
+        self.master = master
+        self.btn = btn
+        self.initialize()
+        
+    #Initializes column table components
+    def initialize(self):
+        table = Toplevel(pady=10, padx=10)
+        table.title("Set Column Info")
+        table.geometry(DEFAULT_SIZE)
+        label_text = ("Enter the column letter that the relevant information"
+                      " can be found in (ex: A, B, AA etc.) If a column's"
+                      " value is calculated with a function, leave that"
+                      " field blank.")
+        col_table_label = Label(table, text=label_text, wraplength = 500,
+                                font=(None, FONT))
+        col_table_label.grid(columnspan=len(LISTINGS))
+        self.fill_grid(table)
+        table.protocol("WM_DELETE_WINDOW", lambda:(write_to_config(self.btn),
                                                table.destroy()))
-    
-#Read spreadsheet sheet
-def read_sheet(sheet):
-    num_rows = sheet.max_row
-    num_cols = sheet.max_column
-    print(num_rows)
-    print(num_cols)
-    for r in range(1, num_rows, 1):
-        for c in range(1, num_cols, 1):
-            print(sheet.cell(row=r, column=c).value)
-           
-#Automate control of mouse
-def import_data():
-    file_path = path_label.cget("text")
-    try:
-        wb = openpyxl.load_workbook(file_path)
-        #get sheet user entered
-        sheetname = sheet_entry.get()
-        sheets = wb.sheetnames
-        sheet = wb[sheetname]
-        save_backup()
-        #read_sheet(sheet)
-    #File no longer exists at path
-    except IOError:
-            messagebox.showerror("File not found!", "File not found"
-                                 + " at selected path. Check to make"
-                                 + " sure it wasn't deleted or moved.")
-    #Sheet not present
-    except KeyError:
-           messagebox.showerror("Sheet not found!", "Check sheet entry"
-                                + " field for spelling,"
-                                + " spacing, and capitalization."
-                                + " It must exactly match the Excel doc"
-                                + " sheet name.")
-    #User ends program early
-    except KeyboardInterrupt:
-        root.destroy()
-    print("importData clicked")
         
-#Excel file selection dialog
-def show_file_chooser(arg=None):
-    filename = askopenfilename(parent=None, title = "Select file",
-                               filetypes = [(("Excel (.xlsx)","*.xlsx"))])
-    length = len(filename)
-    if(length > LABEL_WIDTH):
-        path_label.configure(width=length)
-    path_label.config(text=filename)
-    #User must have selected file
-    if(filename):
-        file_path = filename
-        import_btn.configure(state=NORMAL)
-        
-#GUI
+    #Fills entries with values from config file
+    def fill_grid(self, parent):
+        num_rows = len(LISTINGS)
+        for i in range(num_rows):
+            #initialize labels
+            curr_tuple = LISTINGS[i]
+            curr_label = Label(parent, text=curr_tuple[0], font=(None, FONT))
+            curr_label.grid(row=i+1, column=2, padx=5,pady=5)
+            #initialize entry fields
+            curr_entry = Entry(parent, font=(None, FONT))
+            curr_entry.grid(row=i+1, column=3, padx=5,pady=5)
+            ENTRY_LIST[i] = curr_entry
+        #config file exists
+        try:
+            f = open('config.ini', 'r')
+        #create config from scratch
+        except IOError:
+            init_config()
+        #read in values from config file
+        read_from_config()
+
+#App
 root = Tk()
 root.title("SAP to Excel")
+root.configure(background=COLOR, pady=10, padx=10)
 root.geometry(DEFAULT_SIZE)
-root.configure(background=COLOR)
 root.minsize(width=MIN_WIDTH, height = MIN_HEIGHT)
 root.maxsize(width=MAX_WIDTH, height = MAX_HEIGHT)
-
-label1 = Label(root, wraplength=500, text="Program to transfer data "
-          + "from SAP database to Excel spreaadsheet. Please log into SAP "
-          + "and navigate to agreement number page before using.\n")
-label1.configure(background=COLOR)
-label1.configure(foreground=TEXT_COLOR)
-label1.pack()
-
-label2 = Label(root, wraplength=500, text=" NOTE: This program creates a"
-               + " timestamped backup of any file it modifies. It is"
-               + " HIGHLY recommended not to delete it until you have"
-               + " verified all the new information is valid.\n")
-label2.configure(background=COLOR)
-label2.configure(foreground='red')
-label2.pack()
-
-label3 = Label(root, wraplength=500, text=" WARNING: Terminating the program"
-               + " early via CTRL+C or clicking while the program is running"
-               + " will cause problems that necessitate restarting.")
-label3.configure(background=COLOR)
-label3.configure(foreground=TEXT_COLOR)
-label3.pack()
-
-#Label to show user the destination path they chose
-path_label = Label(root, text="",  width=LABEL_WIDTH)
-path_label.pack(pady=10)
-
-#File Chooser Button
-file_button = Button(root, text="Select destination file",
-                     command=show_file_chooser)
-file_button.pack(pady=10)
-
-#Sheet
-sheet_label = Label(root, text="Enter Excel sheet name ex: Services "
-                    + "(case sensitive)")
-sheet_label.pack(pady=5)
-sheet_entry = Entry()
-sheet_entry.pack(pady=10)
-
-#Column Info
-col_info_btn = Button(root, text="Enter/Verify Column Information",
-                      command=show_col_table)
-col_info_btn.pack(pady=10)
-
-#Import Button, initially disabled
-import_btn = Button(root, text="Import from SAP", state=DISABLED,
-                    command=import_data)
-import_btn.pack()
-
+gui = SAPTransferGUI(root, 0)
 root.mainloop()

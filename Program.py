@@ -274,22 +274,27 @@ class SAPTransferGUI:
     #Read spreadsheet sheet
     def read_sheet(self, sheet, start_row, max_row, max_col):
         for r in range(start_row, max_row):
-            for c in range(1, max_col):
-                print(sheet.cell(row=r, column=c).value, end='', flush=True)
-            print()
+            #for c in range(1, max_col):
+            print(sheet.cell(row=r, column=1).value)
+            #print()
 
     #get first row of contract data
     def get_start_row(self, sheet, max_row):
         #format of contract agreement numbers
         num_format = re.compile('[0-9]{10}')
-        contract_col = cell.column_index_from_string(LISTINGS[0][1])
-        for r in range(1, max_row):
-            curr_cell = sheet.cell(row=r, column=contract_col)
-            val = str(curr_cell.value)
-            found = num_format.match(val)
-            #found first cell with contract number
-            if found:
-                return curr_cell.row
+        contract_col = int(LISTINGS[0][1])
+        try:
+            for r in range(1, max_row):
+                curr_cell = sheet.cell(row=r, column=contract_col)
+                val = str(curr_cell.value)
+                found = num_format.match(val)
+                #found first cell with contract number
+                if found:
+                    return curr_cell.row
+        except ValueError:
+            text = ("Please check to make sure that you have filled in"
+            " the contract agreement field with valid input.")
+            messagebox.showerror("Invalid entry!", text)
             
 #Table where user inputs what information is in each column
 class ColTable:
@@ -304,9 +309,9 @@ class ColTable:
         table.title("Set Column Info")
         table.geometry(DEFAULT_SIZE)
         label_text = ("Enter the column letter that the relevant information"
-                      " can be found in (ex: A, B, AA etc.) If a column's"
-                      " value is calculated with a function, leave that"
-                      " field blank.")
+                      " can be found in (ex: A, B, AA etc. - Must be"
+                      " capitalized). If a column's value is calculated with"
+                      " a function, leave that field blank.")
         col_table_label = Label(table, text=label_text, wraplength = 500,
                                 font=(None, FONT))
         col_table_label.grid(columnspan=len(LISTINGS))

@@ -9,6 +9,7 @@ import os
 import time
 import pywinauto
 import re
+import win32api
 from pywinauto.application import Application
 from pywinauto import keyboard
 from shutil import copyfile
@@ -204,6 +205,10 @@ class SAPTransferGUI:
             #If premature exit, restore unmodified file
             #self.master.protocol("WM_DELETE_WINDOW", lambda:
             #(self.restore_file(backup_path, file_path), self.master.destroy()))
+
+            #x, y = win32api.GetCursorPos()
+            #app.top_window().descendants(control_type="MenuBar")
+
             try:
                 #app = Application(backend='win32').connect(path=PATH)
                 #Display Contract:Initial Screen

@@ -25,9 +25,9 @@ MAX_WIDTH = 570
 MAX_HEIGHT = 460
 PATH = 'C:\Program Files (x86)\SAP\FrontEnd\SAPgui\saplogon.exe'
 #Listings to check SAP for
-LISTINGS = [('Contract Number','A'), ('Contract Name','B'),('Vendor name','C'),
-        ('OA Amount', 'F'), ('OA Net', 'G'), ('OA Remaining', ''),
-        ('Validity Start Date', 'J'), ('Expiration Date', 'K')]
+LISTINGS = [('Contract Number','1'), ('Contract Name','2'),('Vendor name','3'),
+        ('OA Amount', '6'), ('OA Net', '7'), ('OA Remaining', '-1'),
+        ('Validity Start Date', '10'), ('Expiration Date', '11')]
 ENTRY_LIST = [None] * len(LISTINGS) #Store references to grid entries
     
 #copies original file, timestamps backup. Returns path of backup
@@ -54,7 +54,7 @@ def init_config():
             curr_tuple = LISTINGS[i]
             config.set('main', curr_tuple[0], curr_tuple[1])
         config.write(f)
-        f.close()
+    f.close()
 
 #Reads from config
 def read_from_config():
@@ -63,26 +63,25 @@ def read_from_config():
         config.read('config.ini')
         #loop through entry fields
         for i in range(len(ENTRY_LIST)):
-            curr_tuple = LISTINGS[i]
             curr_entry = ENTRY_LIST[i]
             try:
-                val = config.get('main', curr_tuple[0])
-                curr_entry.insert(0, val)
-                #Update LISTINGS, convert alphanumeric column to int
-                val = cell.column_index_from_string(val)
-                new_tuple = (curr_tuple[0], val)                     
+                val = config.get('main', LISTINGS[i][0])
+                new_tuple = (LISTINGS[i][0], str(val))                     
                 LISTINGS[i] = new_tuple
+                #Convert from int to alphanumeric column
+                val = cell.get_column_letter(int(val))
+                curr_entry.insert(0, str(val))
             #Config corrupted, remake
             except (NoSectionError, DuplicateSectionError,
                     MissingSectionHeaderError):
                 init_config()
                 read_from_config()
             except NoOptionError:
-                continue
+                pass
             except ValueError:
-                    new_tuple = (curr_tuple[0], '-1')
-                    LISTINGS[i] = new_tuple
-                    continue
+                new_tuple = (LISTINGS[i][0], '-1')
+                LISTINGS[i] = new_tuple
+                curr_entry.insert(0, '')
     #Config corrupted, remake
     except (MissingSectionHeaderError):
         init_config()
@@ -91,31 +90,32 @@ def read_from_config():
 #Write user entered data to config file
 def write_to_config(btn):    
     config = ConfigParser()
-    try:
-        config.read('config.ini')
-        with open('config.ini', 'w') as f:
-            for i in range(len(ENTRY_LIST)):
-                curr_tuple = LISTINGS[i]
-                val = ENTRY_LIST[i].get()
-                try:
-                    config.set('main', curr_tuple[0], val)
-                    #Update LISTINGS, convert alphanumeric column to int
-                    val = cell.column_index_from_string(val)
-                    new_tuple = (curr_tuple[0], val)                  
-                    LISTINGS[i] = new_tuple
-                except (NoSectionError, DuplicateSectionError,
-                        MissingSectionHeaderError):
-                    init_config()
-                    read_from_config()
-                except ValueError:
-                    new_tuple = (curr_tuple[0], '-1')
-                    LISTINGS[i] = new_tuple
-                    continue
-            config.write(f)
-            f.close()
-    except IOError:
-        init_config()
-        write_to_config()
+    config.read('config.ini')
+    for i in range(len(ENTRY_LIST)):
+        #loop through entry fields
+        val = ENTRY_LIST[i].get()
+        try:
+            #Convert alphanumeric column to int
+            val = str(cell.column_index_from_string(val))
+        except ValueError:
+            val = '-1'
+            new_tuple = (LISTINGS[i][0], '-1')
+            LISTINGS[i] = new_tuple
+        #Update LISTINGS
+        new_tuple = (LISTINGS[i][0], val)                  
+        LISTINGS[i] = new_tuple
+        try:
+            config.set('main', LISTINGS[i][0], val)
+        except (NoSectionError, DuplicateSectionError,
+            MissingSectionHeaderError):
+            init_config()
+            config.read('config.ini')
+            config.set('main', LISTINGS[i][0], val)
+        except NoOptionError:
+            pass
+    # save to config file
+    with open('config.ini', 'w') as configfile:
+        config.write(configfile)
     btn.configure(state=NORMAL)
     
 class SAPTransferGUI:

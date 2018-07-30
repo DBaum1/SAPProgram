@@ -22,15 +22,14 @@ FONT = 11
 DEFAULT_SIZE = '560x450'
 MIN_WIDTH = 550
 MIN_HEIGHT = 440
-MAX_WIDTH = 570
-MAX_HEIGHT = 460
 PATH = 'C:\Program Files (x86)\SAP\FrontEnd\SAPgui\saplogon.exe'
 #Listings to check SAP for
-LISTINGS = [('Contract Number','1'), ('Contract Name','2'),('Vendor name','3'),
-        ('OA Amount', '6'), ('OA Net', '7'), ('OA Remaining', '-1'),
-        ('Validity Start Date', '10'), ('Expiration Date', '11')]
+LISTINGS = [('Contract Number','1'), ('OA Amount', '6'), ('OA Net', '7'),
+            ('OA Remaining', '-1'), ('Validity Start Date', '10'),
+            ('Expiration Date', '11')]      
 ENTRY_LIST = [None] * len(LISTINGS) #Store references to grid entries
-    
+FIELD_LENGTH = 72 #length of SAP field
+
 #copies original file, timestamps backup. Returns path of backup
 def save_backup(file_path):
     src = file_path
@@ -200,29 +199,36 @@ class SAPTransferGUI:
             sheetname = sheet_entry.get()
             sheets = wb.sheetnames
             sheet = wb[sheetname]
+            max_row = sheet.max_row
+            max_col = sheet.max_column
+            start_row = self.get_start_row(sheet, max_row)
             #backup_path = save_backup(file_path)
-            #self.sap_transfer(backup_path, file_path)
             #If premature exit, restore unmodified file
             #self.master.protocol("WM_DELETE_WINDOW", lambda:
             #(self.restore_file(backup_path, file_path), self.master.destroy()))
 
-            #x, y = win32api.GetCursorPos()
-            #app.top_window().descendants(control_type="MenuBar")
+            #transfer started
+            self.exit_stat = 1
+            for r in range(start_row, max_row):
+                for c in range(1, max_col):
+                    try:
+                        #app = Application(backend='win32').connect(path=PATH)
+                        #Display Contract:Initial Screen
+                        #disp_con_dlg = app.Display_Contract
+                        #Start transfer
+                        self.sap_transfer(sheet, r, c)
+                    except pywinauto.application.ProcessNotFoundError:
+                        text = ("Please make sure that SAP is running and you"
+                        " have navigated to the contract agreement page."
+                        " If the contract agreement page is open but you are"
+                        " still getting this error, you will have to change"
+                        " the PATH variable in the config.ini file to the"
+                        " path of the SAPLogon.exe")
+                        messagebox.showerror("Program not found!", text)
+            #wb.save(file_path)
+            #App done with transfer
+            self.exit_stat = 0
 
-            try:
-                #app = Application(backend='win32').connect(path=PATH)
-                #Display Contract:Initial Screen
-                #disp_con_dlg = app.Display_Contract
-                #Start transfer
-                self.sap_transfer(wb, sheet)
-            except pywinauto.application.ProcessNotFoundError:
-                text = ("Please make sure that SAP is running and you have"
-                        " navigated to the contract agreement page. If the"
-                        " contract agreement page is open but you are still"
-                        " getting this error, you will have to change the PATH"
-                        " variable in the config.ini file to the path of the "
-                        " SAPLogon.exe")
-                messagebox.showerror("Program not found!", text)
         #File no longer exists at path
         except IOError:
             text = ("File not found at selected path. Check to make sure it"
@@ -235,14 +241,11 @@ class SAPTransferGUI:
         btn.config(state=NORMAL)
 
     #transfers data from SAP fields to excel file
-    def sap_transfer(self, workbook, sheet):
-        print("sap_transfer clicked - need to implement")
-        self.exit_stat = 1
-        max_row = sheet.max_row
-        max_col = sheet.max_column
-        start_row = self.get_start_row(sheet, max_row)
-        self.read_sheet(sheet, start_row, max_row, max_col)
+    def sap_transfer(self, sheet, row, col):
+        #print("sap_transfer clicked - need to implement")
+        #d = sheet.cell(row=row, column=col).value#, value='test')
         
+
         """
             #disp_con_dlg = dlg_spec['Afx:60310000:1008']
             #actionable_dlg = dlg_spec.wait('visible')
@@ -264,8 +267,6 @@ class SAPTransferGUI:
             #header_dlg['AfxWnd110'].draw_outline()
         """
         
-        #App done with transfer
-        self.exit_stat = 0
             
     #restores original file (dest) from backup (src) in case of premature exit
     def restore_file(self, src, dest):
@@ -275,13 +276,6 @@ class SAPTransferGUI:
             copyfile(src, dest)
             #Backup no longer needed
             os.remove(src)
-
-    #Read spreadsheet sheet
-    def read_sheet(self, sheet, start_row, max_row, max_col):
-        for r in range(start_row, max_row):
-            #for c in range(1, max_col):
-            print(sheet.cell(row=r, column=1).value)
-            #print()
 
     #get first row of contract data
     def get_start_row(self, sheet, max_row):
@@ -351,6 +345,5 @@ root.title("SAP to Excel")
 root.configure(background=COLOR, pady=10, padx=10)
 root.geometry(DEFAULT_SIZE)
 root.minsize(width=MIN_WIDTH, height = MIN_HEIGHT)
-root.maxsize(width=MAX_WIDTH, height = MAX_HEIGHT)
 gui = SAPTransferGUI(root, 0)
 root.mainloop()

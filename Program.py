@@ -209,13 +209,13 @@ class SAPTransferGUI:
             try:
                 app = Application(backend='uia').connect(path=PATH)
                 #Display Contract:Initial Screen
-                #dlg_spec = app.Display_Contract_Initial_Screen
-                #actionable_dlg = dlg_spec.wait('visible')
-                #rect = dlg_spec['Pane6'].rectangle()
-                #x_ref = rect.left
-                #y_ref = rect.top
-                #pyautogui.moveTo(x_ref, y_ref)
-                #pyautogui.click()
+                dlg_spec = app.Display_Contract_Initial_Screen
+                actionable_dlg = dlg_spec.wait('visible')
+                rect = dlg_spec['Pane6'].rectangle()
+                x_ref = rect.left
+                y_ref = rect.top
+                pyautogui.moveTo(x_ref, y_ref)
+                pyautogui.click()
                 #Start transfer
                 for r in range(start_row, 5):
                     #index of LISTINGS 'Contract Number' column
@@ -225,10 +225,10 @@ class SAPTransferGUI:
                     #to search
                     if self.is_contract_num(contract_num):
                         print(contract_num)
-                        #pyautogui.typewrite(str(contract_num), interval=0.50)
-                        #pyautogui.press('enter', interval=5)
+                        pyautogui.typewrite(str(contract_num), interval=0.50)
+                        pyautogui.press('enter', interval=5)
                         #Header details
-                        #pyautogui.press('f6', interval=5)
+                        pyautogui.press('f6', interval=5)
                         self.sap_transfer(sheet, r, contract_num, app)
                 #wb.save(file_path)
                 #App done with transfer
@@ -272,34 +272,32 @@ class SAPTransferGUI:
         #data from SAP fields
         x_ref = rect.left
         y_ref = rect.top
-        print(x_ref, y_ref)
         #get agreement start
-##        x = x_ref + 125
-##        y = y_ref + 125
-##        pyautogui.moveTo(x, y)
-##        pyautogui.click()
-##        pywinauto.mouse.press(button='left', coords=(x+FIELD_LENGTH, y))
-##        valid_start = pyautogui.hotkey('ctrl', 'c')
-##        pywinauto.mouse.release(button='left', coords=(x+FIELD_LENGTH, y))
+        x = x_ref + 125
+        y = y_ref + 125
+        pyautogui.moveTo(x, y)
+        pyautogui.click()
+        pywinauto.mouse.press(button='left', coords=(x+FIELD_LENGTH, y))
+        valid_start = pyautogui.hotkey('ctrl', 'c')
+        pywinauto.mouse.release(button='left', coords=(x+FIELD_LENGTH, y))
         #get agreement end
-##        x = x_ref + 330
-##        y = y_ref + 125
-##        pyautogui.moveTo(x, y)
-##        pyautogui.click()
-##        pywinauto.mouse.press(button='left', coords=(x+FIELD_LENGTH, y))
-##        valid_end = pyautogui.hotkey('ctrl', 'c')
-##        pywinauto.mouse.release(button='left', coords=(x+FIELD_LENGTH, y))
-        #pyautogui.press('f3', interval=3)
+        x = x_ref + 330
+        y = y_ref + 125
+        pyautogui.moveTo(x, y)
+        pyautogui.click()
+        pywinauto.mouse.press(button='left', coords=(x+FIELD_LENGTH, y))
+        valid_end = pyautogui.hotkey('ctrl', 'c')
+        pywinauto.mouse.release(button='left', coords=(x+FIELD_LENGTH, y))
         #get OA net
-##        x = x_ref + 161
-##        y = y_ref + 470
-##        pyautogui.moveTo(x, y)
-##        pyautogui.click()
-##        pywinauto.mouse.press(button='left', coords=(x+FIELD_LENGTH, y))
-##        oa_net = pyautogui.hotkey('ctrl', 'c')
-##        pywinauto.mouse.release(button='left', coords=(x+FIELD_LENGTH, y))
-        
-            
+        x = x_ref + 161
+        y = y_ref + 470
+        pyautogui.moveTo(x, y)
+        pyautogui.click()
+        pywinauto.mouse.press(button='left', coords=(x+FIELD_LENGTH, y))
+        oa_net = pyautogui.hotkey('ctrl', 'c')
+        pywinauto.mouse.release(button='left', coords=(x+FIELD_LENGTH, y))
+        pyautogui.press('f3', interval=3)
+
     #restores original file (dest) from backup (src) in case of premature exit
     def restore_file(self, src, dest):
         #exited before transfer was done

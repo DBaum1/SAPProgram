@@ -223,13 +223,12 @@ class SAPTransferGUI:
                     #only try to transfer data if there's a contract number
                     #to search
                     if self.is_contract_num(contract_num):
-                        print(contract_num)
                         pyautogui.typewrite(str(contract_num), interval=0.25)
                         pyautogui.press('enter', interval=5)
                         #Header details
                         pyautogui.press('f6', interval=5)
                         self.sap_transfer(sheet, r, contract_num, app)
-                #wb.save(file_path)
+                wb.save(file_path)
                 #App done with transfer
                 messagebox.showinfo("Finushed!", "Transfer finished.")
 

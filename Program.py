@@ -289,16 +289,16 @@ class SAPTransferGUI:
         #format of contract agreement numbers
         num_format = re.compile('[0-9]{10}')
         #index of LISTINGS 'Contract Number' column
-        contract_col = int(LISTINGS[0][1])
-        found = num_format.match(val)
+        found = num_format.match(str(val))
         return found
     
     #get first row of contract data
     def get_start_row(self, sheet, max_row):
         try:
             for r in range(1, max_row):
+                contract_col = int(LISTINGS[0][1])
                 curr_cell = sheet.cell(row=r, column=contract_col)
-                val = str(curr_cell.value)
+                val = curr_cell.value
                 #found first cell with contract number
                 if self.is_contract_num(val):
                     return curr_cell.row

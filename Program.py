@@ -202,42 +202,43 @@ class SAPTransferGUI:
             max_row = sheet.max_row
             max_col = sheet.max_column
             start_row = self.get_start_row(sheet, max_row)
-            #backup_path = save_backup(file_path)
-            #If premature exit, restore unmodified file
-            #self.master.protocol("WM_DELETE_WINDOW", lambda:
-            #(self.restore_file(backup_path, file_path), self.master.destroy()))
-
+            backup_path = save_backup(file_path)
             #transfer started
-            self.exit_stat = 1
-            for r in range(start_row, max_row):
-                for c in range(1, max_col):
-                    #index of LISTINGS 'Contract Number' column
-                    contract_col = int(LISTINGS[0][1])
-                    contract_num = sheet.cell(row=r,
-                                              column=contract_col).value
-                    #only try to transfer data if there's a contract number
-                    #to search
-                    if self.is_contract_num(contract_num):
-                        try:
-                            #app = Application(backend='win32').connect(path=PATH)
-                            #Display Contract:Initial Screen
-                            #disp_con_dlg = app.Display_Contract
-                            #Start transfer
+            try:
+                app = Application(backend='win32').connect(path=PATH)
+                #Display Contract:Initial Screen
+                #disp_con_dlg = app.Display_Contract
+                #If premature exit, restore unmodified file
+                #Start transfer
+                for r in range(start_row, max_row):
+                    for c in range(1, max_col):
+                        #index of LISTINGS 'Contract Number' column
+                        contract_col = int(LISTINGS[0][1])
+                        contract_num = sheet.cell(row=r,
+                                                  column=contract_col).value
+                        #only try to transfer data if there's a contract number
+                        #to search
+                        if self.is_contract_num(contract_num):
                             self.sap_transfer(sheet, r, c, contract_num)
-                        except pywinauto.application.ProcessNotFoundError:
-                            text = ("Please make sure that SAP is running and"
-                                    " you have navigated to the contract"
-                                    " agreement page. If the contract"
-                                    " agreement page is open but you are"
-                                    " still getting this error, you will have"
-                                    " to change the PATH variable in the"
-                                    " config.ini file to the path of the"
-                                    " SAPLogon.exe. Then restart the import.")
-                            messagebox.showerror("Program not found!", text)
-            #wb.save(file_path)
-            #App done with transfer
-            self.exit_stat = 0
-
+                #wb.save(file_path)
+                #App done with transfer
+            except pywinauto.application.ProcessNotFoundError:
+                text = ("Please make sure that SAP is running and"
+                        " you have navigated to the contract"
+                        " agreement page. If the contract"
+                        " agreement page is open but you are"
+                        " still getting this error, you will have"
+                        " to change the PATH variable in the"
+                        " config.ini file to the path of the"
+                        " SAPLogon.exe. Then restart the import.")
+                messagebox.showerror("Program not found!", text)
+                #restores original file (dest) from backup (src) in case of
+                #premature exit
+                #Restore original file
+                copyfile(backup_path, file_path)
+                #Backup no longer needed
+                os.remove(backup_path)
+                
         #File no longer exists at path
         except IOError:
             text = ("File not found at selected path. Check to make sure it"
@@ -253,6 +254,12 @@ class SAPTransferGUI:
     def sap_transfer(self, sheet, row, col, contract_num):
         #print("sap_transfer clicked - need to implement")
         #d = sheet.cell(row=row, column=col).value#, value='test')
+        #Get coordinates that will be used as reference to get the
+        #data from SAP fields
+        
+        x_ref = pane.left
+        y_ref = pane.right
+        
         """
             #disp_con_dlg = dlg_spec['Afx:60310000:1008']
             #actionable_dlg = dlg_spec.wait('visible')
@@ -294,9 +301,9 @@ class SAPTransferGUI:
     
     #get first row of contract data
     def get_start_row(self, sheet, max_row):
+        contract_col = int(LISTINGS[0][1])
         try:
             for r in range(1, max_row):
-                contract_col = int(LISTINGS[0][1])
                 curr_cell = sheet.cell(row=r, column=contract_col)
                 val = curr_cell.value
                 #found first cell with contract number

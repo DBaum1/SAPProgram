@@ -29,7 +29,7 @@ PATH = 'C:\Program Files (x86)\SAP\FrontEnd\SAPgui\saplogon.exe'
 LISTINGS = [('Contract Number','1'), ('OA Amount', '6'), ('OA Net', '7'),
             ('Validity Start Date', '10'), ('Expiration Date', '11')]      
 ENTRY_LIST = [None] * len(LISTINGS) #Store references to grid entries
-FIELD_LENGTH = 71 #length of SAP field
+FIELD_LENGTH = 70 #length of SAP field
 
 #copies original file, timestamps backup. Returns path of backup
 def save_backup(file_path):
@@ -203,7 +203,7 @@ class SAPTransferGUI:
             max_row = sheet.max_row
             max_col = sheet.max_column
             start_row = self.get_start_row(sheet, max_row)
-            #backup_path = save_backup(file_path)
+            backup_path = save_backup(file_path)
             #transfer started
             try:
                 app = Application(backend='uia').connect(path=PATH)
@@ -248,8 +248,9 @@ class SAPTransferGUI:
                 copyfile(backup_path, file_path)
                 #Backup no longer needed
                 os.remove(backup_path)
-##            except TimoutError:
-##                print("timeout error")
+            except pywinauto.timings.TimeoutError:
+                text = ("Sytem took too long. Please restart this program.")
+                messagebox.showerror("Program not found!", text)
         #File no longer exists at path
         except IOError:
             text = ("File not found at selected path. Check to make sure it"
@@ -263,6 +264,7 @@ class SAPTransferGUI:
 
     #transfers data from SAP fields to excel file
     def sap_transfer(self, sheet, row, contract_num, app):
+        Timings.Slow()
         #Display Contract:Header Data
         dlg_spec = app.Display_Contract_Header_Data
         actionable_dlg = dlg_spec.wait('visible')
@@ -272,32 +274,42 @@ class SAPTransferGUI:
         x_ref = rect.left
         y_ref = rect.top
         #get agreement start
+        valid_start = None
         x = x_ref + 125
         y = y_ref + 125
         pyautogui.moveTo(x, y)
         pyautogui.click()
-        pywinauto.mouse.press(button='left', coords=(x+FIELD_LENGTH, y))
+        pyautogui.click()
+        pywinauto.mouse.press(button='left', coords=(x+FIELD_LENGTH-1, y))
         valid_start = pyautogui.hotkey('ctrl', 'c')
+        if valid_start is not None:
+            sheet.cell(row=row, column=LISTINGS[3][1], value=valid_start)
         pywinauto.mouse.release(button='left', coords=(x+FIELD_LENGTH, y))
         #get agreement end
+        valid_end = None
         x = x_ref + 330
         y = y_ref + 125
         pyautogui.moveTo(x, y)
         pyautogui.click()
         pywinauto.mouse.press(button='left', coords=(x+FIELD_LENGTH, y))
         valid_end = pyautogui.hotkey('ctrl', 'c')
+        if valid_end is not None:
+            sheet.cell(row=row, column=LISTINGS[4][1], value=valid_end)
         pywinauto.mouse.release(button='left', coords=(x+FIELD_LENGTH, y))
         #get OA net
+        oa_net = None
         x = x_ref + 161
         y = y_ref + 470
         pyautogui.moveTo(x, y)
         pyautogui.click()
         pywinauto.mouse.press(button='left', coords=(x+FIELD_LENGTH, y))
         oa_net = pyautogui.hotkey('ctrl', 'c')
+        if oa_net is not None:
+            sheet.cell(row=row, column=LISTINGS[2][1], value=oa_net)
         pywinauto.mouse.release(button='left', coords=(x+FIELD_LENGTH, y))
         #return to contract agreement page
         pyautogui.press('f3', interval=3)
-
+        
     #determines if data is a contract number (10 digits)
     def is_contract_num(self, val):
         #format of contract agreement numbers

@@ -141,7 +141,8 @@ class SAPTransferGUI:
                     foreground='red', background='white').pack(fill=X)
         label3_text = ("WARNING: Terminating the program before it has"
                " finished the data transfer will cause all changes to be"
-               " rolled back, necessitating restarting to continue.")
+               " rolled back, necessitating restarting to continue. Press"
+               " CTRL-ALT-DELETE to stop GUI automation.")
         label3 = Label(text=label3_text, wraplength=500, font=(None, FONT),
                 foreground='white', background=COLOR).pack(fill=X)
         
@@ -278,9 +279,7 @@ class SAPTransferGUI:
             #Display Contract:Header Data
             #header_dlg = app.Display_Contract_Header_Data
             #actionable_dlg = header_dlg.wait('visible')
-            #header_dlg['AfxWnd110'].draw_outline()
         """
-        
             
     #restores original file (dest) from backup (src) in case of premature exit
     def restore_file(self, src, dest):

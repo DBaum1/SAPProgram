@@ -230,7 +230,7 @@ class SAPTransferGUI:
                         self.sap_transfer(sheet, r, contract_num, app)
                 wb.save(file_path)
                 #App done with transfer
-                messagebox.showinfo("Finushed!", "Transfer finished.")
+                messagebox.showinfo("Finished!", "Transfer finished.")
 
             except pywinauto.application.ProcessNotFoundError:
                 text = ("Please make sure that SAP is running and"
@@ -280,7 +280,9 @@ class SAPTransferGUI:
         pyautogui.click()
         pyautogui.click()
         pywinauto.mouse.press(button='left', coords=(x+FIELD_LENGTH-1, y))
+        time.sleep(0.2)
         valid_start = pyautogui.hotkey('ctrl', 'c')
+        time.sleep(0.2)
         if valid_start is not None:
             sheet.cell(row=row, column=LISTINGS[3][1], value=valid_start)
         pywinauto.mouse.release(button='left', coords=(x+FIELD_LENGTH, y))
@@ -290,8 +292,11 @@ class SAPTransferGUI:
         y = y_ref + 125
         pyautogui.moveTo(x, y)
         pyautogui.click()
-        pywinauto.mouse.press(button='left', coords=(x+FIELD_LENGTH, y))
+        pyautogui.click()
+        pywinauto.mouse.press(button='left', coords=(x+FIELD_LENGTH-1, y))
+        time.sleep(0.2)
         valid_end = pyautogui.hotkey('ctrl', 'c')
+        time.sleep(0.2)
         if valid_end is not None:
             sheet.cell(row=row, column=LISTINGS[4][1], value=valid_end)
         pywinauto.mouse.release(button='left', coords=(x+FIELD_LENGTH, y))
@@ -301,11 +306,14 @@ class SAPTransferGUI:
         y = y_ref + 470
         pyautogui.moveTo(x, y)
         pyautogui.click()
-        pywinauto.mouse.press(button='left', coords=(x+FIELD_LENGTH, y))
+        pyautogui.click()
+        pywinauto.mouse.press(button='left', coords=(x+102, y))
+        time.sleep(0.2)
         oa_net = pyautogui.hotkey('ctrl', 'c')
+        time.sleep(0.2)
         if oa_net is not None:
             sheet.cell(row=row, column=LISTINGS[2][1], value=oa_net)
-        pywinauto.mouse.release(button='left', coords=(x+FIELD_LENGTH, y))
+        pywinauto.mouse.release(button='left', coords=(x+101, y))
         #return to contract agreement page
         pyautogui.press('f3', interval=3)
         

@@ -10,8 +10,10 @@ import time
 import pywinauto
 import re
 import win32api
+import pyautogui
 from pywinauto.application import Application
 from pywinauto import keyboard
+from pywinauto.timings import Timings
 from shutil import copyfile
 from configparser import ConfigParser, NoSectionError, DuplicateSectionError,\
                      NoOptionError, MissingSectionHeaderError
@@ -25,10 +27,9 @@ MIN_HEIGHT = 440
 PATH = 'C:\Program Files (x86)\SAP\FrontEnd\SAPgui\saplogon.exe'
 #Listings to check SAP for
 LISTINGS = [('Contract Number','1'), ('OA Amount', '6'), ('OA Net', '7'),
-            ('OA Remaining', '-1'), ('Validity Start Date', '10'),
-            ('Expiration Date', '11')]      
+            ('Validity Start Date', '10'), ('Expiration Date', '11')]      
 ENTRY_LIST = [None] * len(LISTINGS) #Store references to grid entries
-FIELD_LENGTH = 72 #length of SAP field
+FIELD_LENGTH = 71 #length of SAP field
 
 #copies original file, timestamps backup. Returns path of backup
 def save_backup(file_path):
@@ -162,7 +163,7 @@ class SAPTransferGUI:
                             + "(case sensitive)", font=(None, FONT))
         sheet_label.pack(pady=5)
         dest = StringVar()
-        dest.set('Services')
+        dest.set('Chemicals')
         sheet_entry = Entry(font=(None, FONT), textvariable=dest)
         sheet_entry.pack(pady=10)
 
@@ -203,30 +204,38 @@ class SAPTransferGUI:
             max_row = sheet.max_row
             max_col = sheet.max_column
             start_row = self.get_start_row(sheet, max_row)
-            backup_path = save_backup(file_path)
+            #backup_path = save_backup(file_path)
             #transfer started
             try:
-                app = Application(backend='win32').connect(path=PATH)
+                app = Application(backend='uia').connect(path=PATH)
                 #Display Contract:Initial Screen
-                #disp_con_dlg = app.Display_Contract
-                #If premature exit, restore unmodified file
+                #dlg_spec = app.Display_Contract_Initial_Screen
+                #actionable_dlg = dlg_spec.wait('visible')
+                #rect = dlg_spec['Pane6'].rectangle()
+                #x_ref = rect.left
+                #y_ref = rect.top
+                #pyautogui.moveTo(x_ref, y_ref)
+                #pyautogui.click()
                 #Start transfer
-                for r in range(start_row, max_row):
-                    for c in range(1, max_col):
-                        #index of LISTINGS 'Contract Number' column
-                        contract_col = int(LISTINGS[0][1])
-                        contract_num = sheet.cell(row=r,
-                                                  column=contract_col).value
-                        #only try to transfer data if there's a contract number
-                        #to search
-                        if self.is_contract_num(contract_num):
-                            self.sap_transfer(sheet, r, c, contract_num)
+                for r in range(start_row, 5):
+                    #index of LISTINGS 'Contract Number' column
+                    contract_col = int(LISTINGS[0][1])
+                    contract_num = sheet.cell(row=r, column=contract_col).value                        
+                    #only try to transfer data if there's a contract number
+                    #to search
+                    if self.is_contract_num(contract_num):
+                        print(contract_num)
+                        #pyautogui.typewrite(str(contract_num), interval=0.50)
+                        #pyautogui.press('enter', interval=5)
+                        #Header details
+                        #pyautogui.press('f6', interval=5)
+                        self.sap_transfer(sheet, r, contract_num, app)
                 #wb.save(file_path)
                 #App done with transfer
             except pywinauto.application.ProcessNotFoundError:
                 text = ("Please make sure that SAP is running and"
-                        " you have navigated to the contract"
-                        " agreement page. If the contract"
+                        " you have navigated to Display Contract:Initial"
+                        " Screen title page. If the contract"
                         " agreement page is open but you are"
                         " still getting this error, you will have"
                         " to change the PATH variable in the"
@@ -239,7 +248,8 @@ class SAPTransferGUI:
                 copyfile(backup_path, file_path)
                 #Backup no longer needed
                 os.remove(backup_path)
-                
+##            except TimoutError:
+##                print("timeout error")
         #File no longer exists at path
         except IOError:
             text = ("File not found at selected path. Check to make sure it"
@@ -252,34 +262,43 @@ class SAPTransferGUI:
         btn.config(state=NORMAL)
 
     #transfers data from SAP fields to excel file
-    def sap_transfer(self, sheet, row, col, contract_num):
-        #print("sap_transfer clicked - need to implement")
+    def sap_transfer(self, sheet, row, contract_num, app):
         #d = sheet.cell(row=row, column=col).value#, value='test')
+        #Display Contract:Header Data
+        dlg_spec = app.Display_Contract_Header_Data
+        actionable_dlg = dlg_spec.wait('visible')
+        rect = app.Display_Contract_Header_Data['Pane6'].rectangle()
         #Get coordinates that will be used as reference to get the
         #data from SAP fields
+        x_ref = rect.left
+        y_ref = rect.top
+        print(x_ref, y_ref)
+        #get agreement start
+##        x = x_ref + 125
+##        y = y_ref + 125
+##        pyautogui.moveTo(x, y)
+##        pyautogui.click()
+##        pywinauto.mouse.press(button='left', coords=(x+FIELD_LENGTH, y))
+##        valid_start = pyautogui.hotkey('ctrl', 'c')
+##        pywinauto.mouse.release(button='left', coords=(x+FIELD_LENGTH, y))
+        #get agreement end
+##        x = x_ref + 330
+##        y = y_ref + 125
+##        pyautogui.moveTo(x, y)
+##        pyautogui.click()
+##        pywinauto.mouse.press(button='left', coords=(x+FIELD_LENGTH, y))
+##        valid_end = pyautogui.hotkey('ctrl', 'c')
+##        pywinauto.mouse.release(button='left', coords=(x+FIELD_LENGTH, y))
+        #pyautogui.press('f3', interval=3)
+        #get OA net
+##        x = x_ref + 161
+##        y = y_ref + 470
+##        pyautogui.moveTo(x, y)
+##        pyautogui.click()
+##        pywinauto.mouse.press(button='left', coords=(x+FIELD_LENGTH, y))
+##        oa_net = pyautogui.hotkey('ctrl', 'c')
+##        pywinauto.mouse.release(button='left', coords=(x+FIELD_LENGTH, y))
         
-        x_ref = pane.left
-        y_ref = pane.right
-        
-        """
-            #disp_con_dlg = dlg_spec['Afx:60310000:1008']
-            #actionable_dlg = dlg_spec.wait('visible')
-            #curr_tuple = LISTINGS[0]
-            #contract_num_col = \
-            #openpyxl.utils.cell.column_index_from_string(curr_tuple[1])
-            #TODO get contract num from excel sheet, enter into SAP
-            #dummy_num = '4600014943'
-            #disp_con_dlg.TypeKeys(dummy_num)
-            #disp_con_dlg.TypeKeys('{ENTER}')
-            #actionable_dlg = disp_con_dlg.wait('visible')
-            #Display Contract:Item Overview 
-            #itm_over_dlg = app.Display_Contract_Item_Overview
-            #get header
-            #itm_over_dlg['Button4'].click()
-            #Display Contract:Header Data
-            #header_dlg = app.Display_Contract_Header_Data
-            #actionable_dlg = header_dlg.wait('visible')
-        """
             
     #restores original file (dest) from backup (src) in case of premature exit
     def restore_file(self, src, dest):

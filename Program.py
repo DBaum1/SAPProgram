@@ -121,9 +121,8 @@ def write_to_config(btn):
     
 class SAPTransferGUI:
 
-    def __init__(self, master, exit_stat):
+    def __init__(self, master):
         self.master = master
-        self.exit_stat = exit_stat
         self.initialize()
         
     #Initializes main GUI components
@@ -217,7 +216,7 @@ class SAPTransferGUI:
                 pyautogui.moveTo(x_ref, y_ref)
                 pyautogui.click()
                 #Start transfer
-                for r in range(start_row, 5):
+                for r in range(start_row, max_row):
                     #index of LISTINGS 'Contract Number' column
                     contract_col = int(LISTINGS[0][1])
                     contract_num = sheet.cell(row=r, column=contract_col).value                        
@@ -225,13 +224,15 @@ class SAPTransferGUI:
                     #to search
                     if self.is_contract_num(contract_num):
                         print(contract_num)
-                        pyautogui.typewrite(str(contract_num), interval=0.50)
+                        pyautogui.typewrite(str(contract_num), interval=0.25)
                         pyautogui.press('enter', interval=5)
                         #Header details
                         pyautogui.press('f6', interval=5)
                         self.sap_transfer(sheet, r, contract_num, app)
                 #wb.save(file_path)
                 #App done with transfer
+                messagebox.showinfo("Finushed!", "Transfer finished.")
+
             except pywinauto.application.ProcessNotFoundError:
                 text = ("Please make sure that SAP is running and"
                         " you have navigated to Display Contract:Initial"
@@ -244,7 +245,6 @@ class SAPTransferGUI:
                 messagebox.showerror("Program not found!", text)
                 #restores original file (dest) from backup (src) in case of
                 #premature exit
-                #Restore original file
                 copyfile(backup_path, file_path)
                 #Backup no longer needed
                 os.remove(backup_path)
@@ -263,7 +263,6 @@ class SAPTransferGUI:
 
     #transfers data from SAP fields to excel file
     def sap_transfer(self, sheet, row, contract_num, app):
-        #d = sheet.cell(row=row, column=col).value#, value='test')
         #Display Contract:Header Data
         dlg_spec = app.Display_Contract_Header_Data
         actionable_dlg = dlg_spec.wait('visible')
@@ -296,16 +295,8 @@ class SAPTransferGUI:
         pywinauto.mouse.press(button='left', coords=(x+FIELD_LENGTH, y))
         oa_net = pyautogui.hotkey('ctrl', 'c')
         pywinauto.mouse.release(button='left', coords=(x+FIELD_LENGTH, y))
+        #return to contract agreement page
         pyautogui.press('f3', interval=3)
-
-    #restores original file (dest) from backup (src) in case of premature exit
-    def restore_file(self, src, dest):
-        #exited before transfer was done
-        if(self.exit_stat == 1):
-            #Restore original file
-            copyfile(src, dest)
-            #Backup no longer needed
-            os.remove(src)
 
     #determines if data is a contract number (10 digits)
     def is_contract_num(self, val):
@@ -384,5 +375,5 @@ root.title("SAP to Excel")
 root.configure(background=COLOR, pady=10, padx=10)
 root.geometry(DEFAULT_SIZE)
 root.minsize(width=MIN_WIDTH, height = MIN_HEIGHT)
-gui = SAPTransferGUI(root, 0)
+gui = SAPTransferGUI(root)
 root.mainloop()

@@ -211,20 +211,29 @@ class SAPTransferGUI:
             self.exit_stat = 1
             for r in range(start_row, max_row):
                 for c in range(1, max_col):
-                    try:
-                        #app = Application(backend='win32').connect(path=PATH)
-                        #Display Contract:Initial Screen
-                        #disp_con_dlg = app.Display_Contract
-                        #Start transfer
-                        self.sap_transfer(sheet, r, c)
-                    except pywinauto.application.ProcessNotFoundError:
-                        text = ("Please make sure that SAP is running and you"
-                        " have navigated to the contract agreement page."
-                        " If the contract agreement page is open but you are"
-                        " still getting this error, you will have to change"
-                        " the PATH variable in the config.ini file to the"
-                        " path of the SAPLogon.exe")
-                        messagebox.showerror("Program not found!", text)
+                    #index of LISTINGS 'Contract Number' column
+                    contract_col = int(LISTINGS[0][1])
+                    contract_num = sheet.cell(row=r,
+                                              column=contract_col).value
+                    #only try to transfer data if there's a contract number
+                    #to search
+                    if self.is_contract_num(contract_num):
+                        try:
+                            #app = Application(backend='win32').connect(path=PATH)
+                            #Display Contract:Initial Screen
+                            #disp_con_dlg = app.Display_Contract
+                            #Start transfer
+                            self.sap_transfer(sheet, r, c, contract_num)
+                        except pywinauto.application.ProcessNotFoundError:
+                            text = ("Please make sure that SAP is running and"
+                                    " you have navigated to the contract"
+                                    " agreement page. If the contract"
+                                    " agreement page is open but you are"
+                                    " still getting this error, you will have"
+                                    " to change the PATH variable in the"
+                                    " config.ini file to the path of the"
+                                    " SAPLogon.exe. Then restart the import.")
+                            messagebox.showerror("Program not found!", text)
             #wb.save(file_path)
             #App done with transfer
             self.exit_stat = 0
@@ -241,11 +250,9 @@ class SAPTransferGUI:
         btn.config(state=NORMAL)
 
     #transfers data from SAP fields to excel file
-    def sap_transfer(self, sheet, row, col):
+    def sap_transfer(self, sheet, row, col, contract_num):
         #print("sap_transfer clicked - need to implement")
         #d = sheet.cell(row=row, column=col).value#, value='test')
-        
-
         """
             #disp_con_dlg = dlg_spec['Afx:60310000:1008']
             #actionable_dlg = dlg_spec.wait('visible')
@@ -277,22 +284,31 @@ class SAPTransferGUI:
             #Backup no longer needed
             os.remove(src)
 
-    #get first row of contract data
-    def get_start_row(self, sheet, max_row):
+    #determines if data is a contract number (10 digits)
+    def is_contract_num(self, val):
         #format of contract agreement numbers
         num_format = re.compile('[0-9]{10}')
+        #index of LISTINGS 'Contract Number' column
         contract_col = int(LISTINGS[0][1])
+        found = num_format.match(val)
+        return found
+    
+    #get first row of contract data
+    def get_start_row(self, sheet, max_row):
         try:
             for r in range(1, max_row):
                 curr_cell = sheet.cell(row=r, column=contract_col)
                 val = str(curr_cell.value)
-                found = num_format.match(val)
                 #found first cell with contract number
-                if found:
+                if self.is_contract_num(val):
                     return curr_cell.row
         except ValueError:
-            text = ("Please check to make sure that you have filled in"
-            " the contract agreement field with valid input.")
+            text = ("No contract agreement numbers found in sheet!\n"
+            " Please check to make sure that you have filled in the"
+            " contract agreement (column info) field with a column that exists"
+            " on the sheet. Else, check that the sheet contains valid"
+            " agreement numbers. Valid input is defined as a sequence of 10"
+            " numbers, 0-9 with no letters. \nEx: 4000954312")
             messagebox.showerror("Invalid entry!", text)
             
 #Table where user inputs what information is in each column
